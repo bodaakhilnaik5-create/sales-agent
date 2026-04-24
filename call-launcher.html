@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Sales Agent — Call Launcher</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: #08090A; color: #EEF0F5;
+    min-height: 100vh; display: flex;
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: #0F1117; border: 1px solid #1E2330;
+    border-radius: 16px; padding: 32px;
+    width: 100%; max-width: 480px;
+  }
+  .logo { text-align: center; margin-bottom: 28px; }
+  .logo-icon { font-size: 40px; margin-bottom: 8px; }
+  .logo-title { font-size: 22px; font-weight: 700; color: #00E5A0; }
+  .logo-sub { font-size: 13px; color: #636B82; margin-top: 4px; }
+
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #636B82; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  input, select {
+    width: 100%; background: rgba(255,255,255,0.04);
+    border: 1px solid #1E2330; border-radius: 8px;
+    padding: 11px 14px; color: #EEF0F5; font-size: 14px;
+    font-family: 'Outfit', sans-serif;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus { outline: none; border-color: #00E5A0; }
+  select option { background: #0F1117; }
+
+  .server-row {
+    display: flex; gap: 8px; margin-bottom: 20px;
+    padding: 12px; background: rgba(0,229,160,0.05);
+    border: 1px solid rgba(0,229,160,0.2); border-radius: 8px;
+    align-items: center;
+  }
+  .server-dot { width: 8px; height: 8px; border-radius: 50%; background: #00E5A0; animation: pulse 2s infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .server-url { font-size: 12px; color: #00E5A0; font-family: monospace; word-break: break-all; }
+
+  .btn {
+    width: 100%; padding: 14px;
+    background: #00E5A0; color: #08090A;
+    border: none; border-radius: 10px;
+    font-size: 16px; font-weight: 700;
+    cursor: pointer; font-family: 'Outfit', sans-serif;
+    transition: all 0.15s; margin-top: 8px;
+  }
+  .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .status {
+    margin-top: 16px; padding: 14px;
+    border-radius: 8px; font-size: 14px;
+    text-align: center; display: none;
+  }
+  .status.success { background: rgba(0,229,160,0.1); border: 1px solid rgba(0,229,160,0.3); color: #00E5A0; }
+  .status.error { background: rgba(255,90,101,0.1); border: 1px solid rgba(255,90,101,0.3); color: #FF5A65; }
+  .status.loading { background: rgba(77,158,255,0.1); border: 1px solid rgba(77,158,255,0.3); color: #4D9EFF; }
+
+  .divider { height: 1px; background: #1E2330; margin: 20px 0; }
+  .recent { }
+  .recent-title { font-size: 12px; color: #636B82; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .call-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; background: rgba(255,255,255,0.02);
+    border-radius: 8px; margin-bottom: 6px; font-size: 13px;
+  }
+  .call-name { font-weight: 600; }
+  .call-status { font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+  .s-calling { background: rgba(77,158,255,0.15); color: #4D9EFF; }
+  .s-done { background: rgba(0,229,160,0.15); color: #00E5A0; }
+  .s-failed { background: rgba(255,90,101,0.15); color: #FF5A65; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🎙️</div>
+    <div class="logo-title">AI Sales Agent</div>
+    <div class="logo-sub">Real Call Launcher · Powered by Twilio + Groq</div>
+  </div>
+
+  <!-- Server URL -->
+  <div class="server-row">
+    <div class="server-dot"></div>
+    <div class="server-url" id="serverDisplay">Not configured</div>
+  </div>
+
+  <!-- Server URL input -->
+  <div class="form-group">
+    <label>Your Railway Server URL</label>
+    <input type="text" id="serverUrl"
+      placeholder="https://sales-agent-production-0f1.railway.app"
+      oninput="document.getElementById('serverDisplay').textContent = this.value || 'Not configured'"
+    />
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Customer details -->
+  <div class="form-group">
+    <label>Customer Name</label>
+    <input type="text" id="customerName" placeholder="Priya Sharma" />
+  </div>
+
+  <div class="form-group">
+    <label>Customer Phone Number</label>
+    <input type="tel" id="customerPhone" placeholder="+91 98765 43210" />
+  </div>
+
+  <div class="form-group">
+    <label>Interest / Product</label>
+    <select id="customerInterest">
+      <option>Home Loan</option>
+      <option>Term Insurance</option>
+      <option>Property Insurance</option>
+      <option>Life Insurance</option>
+      <option>Health Insurance</option>
+      <option>Investment Property</option>
+    </select>
+  </div>
+
+  <button class="btn" id="callBtn" onclick="startCall()">
+    📞 Start Real Call Now
+  </button>
+
+  <div class="status" id="status"></div>
+
+  <div class="divider"></div>
+
+  <div class="recent">
+    <div class="recent-title">Recent Calls</div>
+    <div id="callLog">
+      <div style="color: #636B82; font-size: 13px; text-align: center; padding: 10px;">No calls yet</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const calls = [];
+
+  // Load saved server URL
+  const saved = localStorage.getItem('serverUrl');
+  if (saved) {
+    document.getElementById('serverUrl').value = saved;
+    document.getElementById('serverDisplay').textContent = saved;
+  }
+
+  async function startCall() {
+    const serverUrl = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
+    const customerName = document.getElementById('customerName').value.trim();
+    const customerPhone = document.getElementById('customerPhone').value.trim();
+    const customerInterest = document.getElementById('customerInterest').value;
+
+    if (!serverUrl) return showStatus('⚠️ Please enter your Railway server URL first!', 'error');
+    if (!customerName) return showStatus('⚠️ Please enter customer name!', 'error');
+    if (!customerPhone) return showStatus('⚠️ Please enter customer phone number!', 'error');
+
+    // Save server URL
+    localStorage.setItem('serverUrl', serverUrl);
+
+    const btn = document.getElementById('callBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Dialing...';
+    showStatus(`📞 Calling ${customerName} at ${customerPhone}...`, 'loading');
+
+    try {
+      const response = await fetch(`${serverUrl}/call/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerPhone, customerName, customerInterest })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        showStatus(`✅ Call started! ${customerName}'s phone is ringing now!\n\nCall SID: ${data.callSid}`, 'success');
+        addToLog(customerName, customerPhone, 'calling', data.callSid);
+        document.getElementById('customerName').value = '';
+        document.getElementById('customerPhone').value = '';
+      } else {
+        showStatus(`❌ Error: ${data.error}`, 'error');
+        addToLog(customerName, customerPhone, 'failed');
+      }
+    } catch (err) {
+      showStatus(`❌ Could not reach server!\n\nMake sure your Railway URL is correct and the server is running.\n\nError: ${err.message}`, 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '📞 Start Real Call Now';
+  }
+
+  function showStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = `status ${type}`;
+    el.style.display = 'block';
+    el.style.whiteSpace = 'pre-line';
+  }
+
+  function addToLog(name, phone, status, sid) {
+    calls.unshift({ name, phone, status, sid, time: new Date().toLocaleTimeString() });
+    renderLog();
+  }
+
+  function renderLog() {
+    const log = document.getElementById('callLog');
+    if (!calls.length) {
+      log.innerHTML = '<div style="color:#636B82;font-size:13px;text-align:center;padding:10px">No calls yet</div>';
+      return;
+    }
+    log.innerHTML = calls.slice(0, 5).map(c => `
+      <div class="call-item">
+        <div>
+          <div class="call-name">${c.name}</div>
+          <div style="color:#636B82;font-size:11px;margin-top:2px">${c.phone} · ${c.time}</div>
+        </div>
+        <span class="call-status s-${c.status === 'calling' ? 'calling' : c.status === 'failed' ? 'failed' : 'done'}">
+          ${c.status === 'calling' ? '📞 Calling' : c.status === 'failed' ? '❌ Failed' : '✅ Done'}
+        </span>
+      </div>
+    `).join('');
+  }
+
+  // Allow Enter key to trigger call
+  document.addEventListener('keypress', e => {
+    if (e.key === 'Enter') startCall();
+  });
+</script>
+</body>
+</html>
